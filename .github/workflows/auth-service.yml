@@ -1,0 +1,95 @@
+name: Auth Service CI/Build
+
+on:
+  push:
+    branches:
+      - develop 
+    paths:
+      - 'apps/auth-service/**'
+      
+env:
+  SERVICE_PATH: ./apps/auth-service
+  SERVICE_NAME: auth-service
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/${{ env.SERVICE_NAME }}
+
+jobs:
+  # =================================================================
+  # JOB 1: INTEGRACIÓN CONTINUA (LINT & TEST)
+  # =================================================================
+  ci:
+    name: 🧪 Code Quality & Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.SERVICE_PATH }}/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm install
+        working-directory: ${{ env.SERVICE_PATH }}
+
+      - name: 🔍 Run Linter (ESLint)
+        run: npm run lint
+        working-directory: ${{ env.SERVICE_PATH }}
+
+      - name: 🎯 Run Tests with CI Environment
+        env:
+          # --- SECRETS DE GITHUB ---
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          
+          # --- VARIABLES DE CONFIGURACIÓN DE PRUEBA ---
+          DB_HOST: localhost
+          DB_USER: ci_test_user 
+          DB_PASSWORD: ci_test_pass
+          DB_NAME: authdb
+          PORT: 3001
+          JWT_EXPIRES: 1h
+          JWT_REFRESH_EXPIRES: 30d
+          NODE_ENV: test
+          
+        run: npm test
+        working-directory: ${{ env.SERVICE_PATH }}
+
+  # =================================================================
+  # JOB 2: BUILD Y PUBLICACIÓN (GHCR)
+  # =================================================================
+  build_and_push:
+    name: 🔨 Build & Publish Image to GHCR
+    runs-on: ubuntu-latest
+    needs: ci  # 🚨 Solo se ejecuta si el Job 'ci' pasa con éxito
+    
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔑 Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: 🏷️ Determine image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,suffix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.SERVICE_PATH }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
