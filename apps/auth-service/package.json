@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "lint": "eslint src --ext .js",
     "prisma": "prisma",
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
@@ -30,7 +31,12 @@
   },
   "devDependencies": {
     "dotenv": "^17.2.3",
-    "nodemon": "^3.0.1"
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-node": "^11.1.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^7.1.4"
   },
   "keywords": [],
   "author": "",
