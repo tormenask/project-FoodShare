@@ -119,36 +119,6 @@ const updateRestaurant = async (req, res) => {
         return res.status(500).json({ error: 'Failed to update restaurant' });
     }
 };
-/**
- * Eliminar restaurante (solo owner)
- * DELETE /restaurants/:id
- */
-const deleteRestaurant = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const restaurant = await Restaurant.findOne({
-            where: { id, ownerId: req.user.id }
-        });
-
-        if (!restaurant) {
-            return res.status(404).json({
-                error: 'Restaurant not found or you are not the owner'
-            });
-        }
-
-        await restaurant.destroy();
-
-        return res.status(200).json({
-            message: 'Restaurant deleted successfully'
-        });
-    } catch (error) {
-        console.error('Error deleting restaurant:', error);
-        return res.status(500).json({
-            error: 'Failed to delete restaurant'
-        });
-    }
-};
 
 
 module.exports = {
@@ -156,6 +126,5 @@ module.exports = {
     getRestaurants,
     getRestaurantById,
     getMyRestaurants,
-    updateRestaurant,
-    deleteRestaurant
+    updateRestaurant
 };
