@@ -1,0 +1,132 @@
+# docker-compose.yml - FoodShare Microservices
+# Para levantar todo: docker-compose up --build
+# Para detener: docker-compose down
+# Para limpiar volúmenes: docker-compose down -v
+
+services:
+  # Base de datos PostgreSQL compartida
+  postgres:
+    image: postgres:15-alpine
+    container_name: foodshare-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    networks:
+      - foodshare-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ para eventos entre servicios
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: foodshare-rabbitmq
+    ports:
+      - "5672:5672"   # Puerto AMQP
+      - "15672:15672" # UI de administración
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    networks:
+      - foodshare-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Auth Service (Login/Registro)
+  # NOTA: Requiere que el logger.js esté corregido o Loki disponible
+  auth-service:
+    build:
+      context: ./apps/auth-service
+      dockerfile: Dockerfile
+    container_name: foodshare-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DB_HOST: postgres
+      DB_NAME: auth_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: super-secret-jwt-key-change-in-production
+      # Descomentar si tienen Loki configurado
+      # LOKI_HOST: "http://loki:3100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - foodshare-network
+    restart: on-failure
+    command: sh -c "sleep 10 && npm start"
+
+  # Restaurant Service (Gestión de restaurantes)
+  restaurant-service:
+    build:
+      context: ./apps/restaurant-service
+      dockerfile: Dockerfile
+    container_name: foodshare-restaurant-service
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DB_HOST: postgres
+      DB_NAME: restaurant_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      AUTH_SERVICE_URL: http://auth-service:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - foodshare-network
+    restart: on-failure
+    command: sh -c "sleep 15 && npm start"
+
+  # Order Service (Gestión de pedidos)
+  order-service:
+    build:
+      context: ./apps/order-service
+      dockerfile: Dockerfile
+    container_name: foodshare-order-service
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_NAME: order_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      RESTAURANT_SERVICE_URL: http://restaurant-service:3002
+      RABBITMQ_URL: amqp://user:password@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_started
+    networks:
+      - foodshare-network
+    restart: on-failure
+    command: sh -c "sleep 20 && npm start"
+
+networks:
+  foodshare-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
