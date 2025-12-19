@@ -1,7 +1,7 @@
 const { createLogger, format, transports } = require('winston');
 const LokiTransport = require('winston-loki');
 
-const lokiUrl = process.env.LOKI_URL;
+const lokiUrl = process.env.LOKI_HOST;
 
 const loggerTransports = [
     new transports.Console({

@@ -13,7 +13,7 @@ const Order = sequelize.define('Order', {
     field: 'restaurant_id'
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: true,
     field: 'user_id'
   },

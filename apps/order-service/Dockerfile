@@ -25,11 +25,11 @@ RUN addgroup -g 1001 -S nodejs && \
 USER nodejs
 
 # Exponer puerto
-EXPOSE 3000
+EXPOSE 3002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:3002/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Comando de inicio
 CMD ["npm", "start"]
