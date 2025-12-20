@@ -32,6 +32,24 @@ services:
     networks:
       - foodshare-network
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: foodshare-grafana
+    ports:
+      - "3003:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      loki:
+        condition: service_started
+    networks:
+      - foodshare-network
+    restart: unless-stopped
+
+
+
+
   # RabbitMQ para eventos entre servicios
   rabbitmq:
     image: rabbitmq:3-management-alpine
