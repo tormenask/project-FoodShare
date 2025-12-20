@@ -2,6 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const restaurantRoutes = require('./routes/restaurant.routes');
 const healthCheck = require('./health');
+const menuRoutes = require('./routes/menu.routes');
+
 
 const app = express();
 
@@ -15,6 +17,7 @@ app.get('/health', healthCheck);
 
 // Rutas
 app.use('/restaurants', restaurantRoutes);
+app.use('/', menuRoutes);
 
 // Handler básico de errores
 app.use((err, req, res, next) => {
